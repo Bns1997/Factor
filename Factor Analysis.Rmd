@@ -1,0 +1,137 @@
+---
+title: "Factor Analysis"
+author: "Rajitha Senanayake"
+date: "7/26/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Load Libraries
+```{r}
+library(corrplot)
+library(psych)
+library(lavaan)
+library(factoextra)
+```
+
+## Load Dataset
+```{r}
+data <- read.csv('C:\\Users\\Rajiy\\Downloads\\customers.csv')
+head(data)
+```
+
+## Cleaning Data
+```{r}
+sales <- data[,3:8]
+head(sales)
+```
+## Correlation Matrix and Heatmap Plot
+```{r}
+cor(sales, method = 'spearman')
+```
+```{r}
+corrplot(cor(sales, method = 'spearman'), method = 'number')
+```
+## Standardizing Variables
+```{r}
+scaled_df <- scale(sales, center = TRUE, scale = TRUE)
+head(scaled_df)
+```
+## Bartlett Test to Check usefulness of Factor Analysis
+```{r}
+cortest.bartlett(scaled_df)
+```
+
+## Calculate the Eigen Values and Eigen Vectors
+```{r}
+sales.cov <- cov(scaled_df)
+sales.eigen <- eigen(sales.cov)
+sales.eigen
+```
+*  Number of eigen values > 1
+```{r}
+x <- sales.eigen$values
+sum(x > 1)
+```
+* The number of factors to be considered m=2, we can confirm this using a scree plot
+```{r}
+plot(sales.eigen$values, xlab = 'Eigenvalue Number', ylab = 'Eigenvalue Size', main = 'Scree Graph', type = 'b', xaxt = 'n')
+axis(1, at = seq(1, 6, by = 1))
+```
+## Resulted Factors
+```{r}
+sales.factors <- sales.eigen$vectors[,1:2]
+sales.factors <- -sales.factors
+row.names(sales.factors) <- c('Fresh','Milk','Grocery','Frozen','Detergents_Paper','Delicatessen')
+colnames(sales.factors) <- c('Factor_1','Factor_2')
+sales.factors
+```
+## Loading Matrix
+```{r}
+C <- as.matrix(-sales.eigen$vectors[,1:2])
+D <- matrix(0, dim(C)[2], dim(C)[2])
+diag(D) <- sales.eigen$values[1:2]
+sales.loadings <- C %*% sqrt(D)
+row.names(sales.loadings) <- c('Fresh','Milk','Grocery','Frozen','Detergents_Paper','Delicatessen')
+colnames(sales.loadings) <- c('Fac_1_loadings','Fac_2_loadings')
+sales.loadings
+```
+
+## Calculating Communalities
+```{r}
+h2 <- rowSums(sales.loadings^2)
+h2
+```
+
+
+* Total communality
+```{r}
+sum(h2)
+```
+## Proportion of Total Variance Explained by the Two Factors
+```{r}
+sum(h2)/6
+```
+
+## Specific Variance Matrix
+```{r}
+specVar <- diag(cov(scaled_df))-h2
+specVar
+```
+
+## Varimax Factor Rotation
+```{r}
+varimax(sales.loadings)
+```
+
+## Test for sufficient factors
+```{r}
+fa2 <- fa(scaled_df, nfactors = 2, rotate = 'none')
+factor.stats(scaled_df, fa2)
+```
+## Confirmatory Factor Analysis with Lavaan
+```{r}
+HS.model <- ' essentials =~  Milk + Grocery + Detergents_Paper 
+              storedtemp =~ Fresh + Frozen + Delicatessen'
+```
+
+```{r}
+fit <- cfa(HS.model, data=scaled_df)
+fit
+```
+```{r}
+summary(fit, fit.measures=TRUE)
+```
+```{r}
+cortest.bartlett(scaled_df)
+```
+```{r}
+
+```
+
